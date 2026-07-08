@@ -73,3 +73,18 @@ También se ejecutó el bucle de prueba de la guía (`for i in {1..10}; do curl 
 - **¿Qué pasaría si una instancia falla?** Ocurren dos pasos secuenciales: primero el ALB deja de enviarle tráfico en cuanto el health check la marca `Unhealthy` (casi inmediato, el tráfico se redirige a las instancias sanas restantes); después, el Auto Scaling Group —que usa ese mismo estado de salud del ELB— reemplaza la instancia por una nueva para recuperar la capacidad deseada (esto tarda más, del orden de minutos).
 - **¿Qué pasaría si aumenta la carga?** La política de target tracking scaling detecta que la CPU promedio supera el 50% objetivo y el Auto Scaling Group lanza instancias adicionales (hasta el máximo configurado de 3) para repartir la carga y devolver la métrica cerca del valor objetivo.
 
+## Parte 3: Prueba de escalabilidad
+
+### EC2 Instance Connect no disponible en AWS Academy Learner Lab
+
+Para generar carga con `stress-ng` (Alternativa A de la sección 20) se intentó conectar por **EC2 Instance Connect** a una de las instancias del Auto Scaling Group (`i-0132685d075728c82`), agregando temporalmente una regla SSH (puerto 22, origen "Mi IP") en `ec2-scalability-sg`, siguiendo el mismo patrón usado antes con la instancia base.
+
+La conexión falló repetidamente con `Error establishing SSH connection to your instance`. Se descartaron, en orden, las causas más comunes:
+1. **Regla no guardada:** se confirmó que sí se guardó.
+2. **IP incorrecta en la regla:** se verificó con `checkip.amazonaws.com` que la IP coincidía exactamente con el CIDR de la regla.
+3. **Usuario incorrecto:** el campo de usuario traía `root` por defecto, pero en Amazon Linux el usuario correcto es `ec2-user` (root no tiene login SSH habilitado). Se corrigió y **igual falló**.
+
+Con la red, el Security Group y el usuario descartados como causa, la explicación más probable es una **restricción propia de la cuenta de AWS Academy Learner Lab**: EC2 Instance Connect requiere que el rol de la cuenta tenga el permiso IAM `ec2-instance-connect:SendSSHPublicKey`, y el rol de Academy (`voclabs`) suele tener permisos recortados. Esto es consistente con lo ya visto en el log del sistema de la instancia base, donde el SSM Agent reportaba `AccessDeniedException` por la misma clase de restricción de permisos de gestión de instancias. Como esto excede lo que se puede configurar desde Security Groups o la instancia misma, se abandonó esta vía (y se retiró la regla SSH temporal) en vez de seguir insistiendo.
+
+**Decisión:** usar la Alternativa B de la guía (carga HTTP con `curl` desde el propio equipo) para generar la carga, asumiendo la advertencia de la guía de que podría no ser suficiente para superar el umbral de CPU y disparar el escalamiento.
+
