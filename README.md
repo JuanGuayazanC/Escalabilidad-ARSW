@@ -137,4 +137,15 @@ Se detuvo una de las dos instancias reales del Auto Scaling Group (`i-0132685d07
 - **¿Qué diferencia existe entre ocultar una falla y recuperarse de una falla?** Ocultar (enmascarar) una falla es la mitigación inmediata: el ALB deja de enviarle tráfico a la instancia caída y lo redirige a las instancias sanas, así el usuario nunca nota el problema, pero el componente roto sigue roto. Recuperarse de una falla es un paso adicional: restaurar activamente la capacidad original — el Auto Scaling Group termina el componente roto y lanza uno nuevo para volver al estado deseado. Enmascarar oculta el síntoma; recuperarse corrige la causa (la pérdida de capacidad).
 - **¿Qué atributo de calidad se evidencia en esta prueba?** Disponibilidad (y, más específicamente, tolerancia a fallos / resiliencia): el sistema siguió funcionando y se autorreparó ante la falla de uno de sus componentes, sin intervención manual.
 
+## Relación entre los tres conceptos
+
+| Concepto | Componente AWS relacionado | Evidencia en el laboratorio |
+|---|---|---|
+| Escalabilidad | Auto Scaling Group | Permite crear instancias nuevas automáticamente cuando la carga lo justifica (política de target tracking por CPU) |
+| Alta disponibilidad | ALB + múltiples AZ | Si una instancia se cae, las demás (en otras zonas de disponibilidad) siguen atendiendo tráfico sin que el servicio se vea afectado |
+| Observabilidad | CloudWatch Metrics | Se revisaron y documentaron `CPUUtilization`, `NetworkIn`/`NetworkOut`, `GroupDesiredCapacity` y `HealthyHostCount` antes, durante y después de la prueba de carga (Actividad 3), permitiendo interpretar por qué el sistema no escaló |
+| Detección de fallos | Health checks | Verifican periódicamente (ruta `/health`) cuáles instancias están sanas y cuáles no, y así el Target Group decide a quién enviarle tráfico |
+| Recuperación | Auto Scaling Group | Al detectar una instancia no saludable, la termina y lanza una nueva para restaurar la capacidad deseada (visto en la Parte 5) |
+| Distribución de carga | Load Balancer | Cuando una instancia no está funcionando, dirige toda la carga a las instancias restantes que sí están saludables |
+
 
