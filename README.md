@@ -22,6 +22,40 @@ All the work is done through the AWS console (there is no application code of ou
 
 These are related but distinct concepts: a system can scale without being highly available (e.g., many instances in a single AZ), and it can be highly available without scaling (two fixed instances in two AZs, with no Auto Scaling).
 
+## Implemented architecture
+
+```mermaid
+graph TD
+    User["Internet / Browser / curl"]
+
+    subgraph ALBSG["Security Group: alb-scalability-sg (HTTP 80 from 0.0.0.0/0)"]
+        ALB["Application Load Balancer<br/>alb-scalability-ha<br/>AZs: us-east-1a, us-east-1b"]
+    end
+
+    TG["Target Group: tg-scalability-ha<br/>Health check: HTTP GET /health"]
+
+    subgraph ASG["Auto Scaling Group: asg-web-scalability<br/>desired=2 min=2 max=3<br/>Target tracking policy: avg CPU 50%"]
+        subgraph EC2SG["Security Group: ec2-scalability-sg (HTTP 80 only from alb-scalability-sg)"]
+            I1["EC2 instance<br/>us-east-1a"]
+            I2["EC2 instance<br/>us-east-1b"]
+            I3["EC2 instance<br/>(launched on scale-out or replacement)"]
+        end
+    end
+
+    CW["CloudWatch Metrics<br/>CPUUtilization, NetworkIn/Out,<br/>RequestCount, HealthyHostCount,<br/>GroupDesiredCapacity"]
+
+    User -->|HTTP 80| ALB
+    ALB --> TG
+    TG --> I1
+    TG --> I2
+    TG -.-> I3
+    ALB -.metrics.-> CW
+    I1 -.metrics.-> CW
+    I2 -.metrics.-> CW
+```
+
+The AMI used by the Launch Template (`lt-web-scalability`) is built from a base instance (`web-scalability-base`) that runs the bootstrap script in [scripts/user-data.sh](scripts/user-data.sh) once; see [Part 1](#part-1-horizontal-scalability) for why the Launch Template itself doesn't re-run it.
+
 ## Part 1: Horizontal scalability
 
 ### Security Groups
@@ -247,4 +281,4 @@ The ALB keeps responding successfully during the recovery:
 ![AMI available](evidencias/ami-available.png)
 ![Launch template created](evidencias/launch-template-created.png)
 
-Items 1 (architecture diagram), 9-11 (scalability/high-availability/observability analysis), and 12 (improvement proposal) are already covered by the theory sections, Activities 1-4, the concept relationship table, and the improvement proposal in this same README.
+Item 1 (architecture diagram) is covered by the [Implemented architecture](#implemented-architecture) section above. Items 9-11 (scalability/high-availability/observability analysis) and 12 (improvement proposal) are covered by the theory sections, Activities 1-4, the concept relationship table, and the improvement proposal in this same README.
