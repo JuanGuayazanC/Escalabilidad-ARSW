@@ -107,4 +107,17 @@ Se ejecutó primero una ráfaga de 500 peticiones concurrentes contra `/load.htm
 - **¿Qué limitación tiene usar solo CPU como métrica de escalamiento?** Que no refleja el cuello de botella real de muchas aplicaciones web. Una aplicación puede estar sirviendo mucho tráfico real (como se vio en `NetworkIn`/`NetworkOut`) sin que la CPU se entere, si el trabajo por petición es barato (como servir un archivo estático). En ese caso el sistema nunca escalaría aunque estuviera bajo una carga real que sí podría agotar otros recursos (conexiones concurrentes, procesos/hilos del servidor web, ancho de banda).
 - **¿Qué otra métrica podría ser útil para una aplicación web?** `RequestCountPerTarget` (peticiones por instancia) o `TargetResponseTime` (latencia), que reflejan directamente la experiencia del usuario y la saturación real del servicio, independientemente de si el cuello de botella es CPU. La propia guía menciona en su cierre "Auto Scaling basado en RequestCountPerTarget" como mejora para producción, justamente por esta razón.
 
+## Parte 4: Observabilidad con CloudWatch
+
+Nota: al filtrar métricas en CloudWatch por nombre de recurso, aparecieron métricas de un ALB/Target Group con nombres distintos (`alb-ha-web`, `tg-ha-web`), residuo de otro laboratorio previo en la misma cuenta compartida de AWS Academy. Se filtró explícitamente por `scalability` para aislar solo las métricas de los recursos de este laboratorio.
+
+## Actividad 3: análisis de observabilidad
+
+| Métrica | Servicio AWS | Antes de la carga | Durante la carga | Después de la carga | Interpretación | Decisión arquitectónica que soporta |
+|---|---|---|---|---|---|---|
+| `CPUUtilization` | Amazon EC2 (por instancia, agregado en el Auto Scaling Group) | ~0.42% | Pico de 0.817% | Vuelve a ~0.4-0.5% | La carga HTTP generada (500 + ráfagas sostenidas de `curl`) no fue intensiva en CPU; servir contenido estático es demasiado barato para moverla | Confirma la limitación de usar solo CPU como métrica de destino para esta carga de trabajo; motiva usar `RequestCountPerTarget` en su lugar |
+| `NetworkIn` / `NetworkOut` | Amazon EC2 | Base baja (~7k bytes) | Pico de ~296k / ~370k bytes | Vuelve a la base | Confirma que sí hubo tráfico real llegando a las instancias durante la prueba | Valida que el ALB distribuyó las solicitudes correctamente; el "cuello de botella" no fue de conectividad sino de que ese tráfico no estresó CPU |
+| `GroupDesiredCapacity` / instancias en servicio | EC2 Auto Scaling (métricas de grupo) | 2 | 2 (sin cambio) | 2 | El Auto Scaling Group no consideró necesario escalar, porque su única señal de decisión (CPU promedio) nunca cruzó el umbral del 50% | Soporta documentar el resultado como "intento de escalamiento" y recomendar otra métrica de destino para producción |
+| `HealthyHostCount` | ApplicationELB (Target Group) | 2 | 2 | 2 | Ambas instancias se mantuvieron saludables durante toda la prueba de carga, sin degradación del servicio | Confirma que la arquitectura de alta disponibilidad (ALB + Target Group + 2 AZ) siguió funcionando correctamente incluso bajo la carga generada |
+
 
