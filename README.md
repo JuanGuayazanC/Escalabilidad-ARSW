@@ -120,4 +120,21 @@ Nota: al filtrar métricas en CloudWatch por nombre de recurso, aparecieron mét
 | `GroupDesiredCapacity` / instancias en servicio | EC2 Auto Scaling (métricas de grupo) | 2 | 2 (sin cambio) | 2 | El Auto Scaling Group no consideró necesario escalar, porque su única señal de decisión (CPU promedio) nunca cruzó el umbral del 50% | Soporta documentar el resultado como "intento de escalamiento" y recomendar otra métrica de destino para producción |
 | `HealthyHostCount` | ApplicationELB (Target Group) | 2 | 2 | 2 | Ambas instancias se mantuvieron saludables durante toda la prueba de carga, sin degradación del servicio | Confirma que la arquitectura de alta disponibilidad (ALB + Target Group + 2 AZ) siguió funcionando correctamente incluso bajo la carga generada |
 
+## Parte 5: Prueba de alta disponibilidad
+
+Se detuvo una de las dos instancias reales del Auto Scaling Group (`i-0132685d075728c82`, en `us-east-1a`) para simular una falla. Evidencia observada:
+
+- **Target Group:** la instancia detenida pasó a estado `Draining` ("Target deregistration in progress"), mientras las otras dos instancias (la sobreviviente y una nueva) aparecían `Healthy`.
+- **Auto Scaling Group (Historial de actividad):** se registraron dos eventos encadenados — *"Terminating EC2 instance: i-0132685d075728c82 — Waiting For ELB Connection Draining"*, causado por *"an EC2 health check indicating it has been terminated or stopped"*; y *"Launching a new EC2 instance: i-06e939b8cdd97a8e1"*, causado por *"an unhealthy instance needing to be replaced"*. Esto confirma que fue un **reemplazo** (mantener capacidad deseada en 2), no un **escalamiento** (subir a 3).
+- **Load Balancer:** al recargar `http://alb-scalability-ha-2100884508.us-east-1.elb.amazonaws.com` durante y después del proceso, el servicio respondió siempre con éxito ("Estado: Servicio disponible"), sin interrupciones visibles para el usuario.
+
+## Actividad 4: análisis de alta disponibilidad
+
+- **¿Qué ocurrió cuando se detuvo una instancia?** El Target Group la marcó como no saludable y la puso en `Draining`; el Auto Scaling Group la terminó y lanzó una instancia nueva para recuperar la capacidad deseada de 2.
+- **¿El Load Balancer siguió respondiendo?** Sí, sin errores, en todo momento.
+- **¿El Target Group detectó la falla?** Sí, casi inmediatamente vía el health check en `/health`.
+- **¿El Auto Scaling Group lanzó una nueva instancia?** Sí, una de reemplazo (no de escalamiento).
+- **¿Qué diferencia existe entre ocultar una falla y recuperarse de una falla?** Ocultar (enmascarar) una falla es la mitigación inmediata: el ALB deja de enviarle tráfico a la instancia caída y lo redirige a las instancias sanas, así el usuario nunca nota el problema, pero el componente roto sigue roto. Recuperarse de una falla es un paso adicional: restaurar activamente la capacidad original — el Auto Scaling Group termina el componente roto y lanza uno nuevo para volver al estado deseado. Enmascarar oculta el síntoma; recuperarse corrige la causa (la pérdida de capacidad).
+- **¿Qué atributo de calidad se evidencia en esta prueba?** Disponibilidad (y, más específicamente, tolerancia a fallos / resiliencia): el sistema siguió funcionando y se autorreparó ante la falla de uno de sus componentes, sin intervención manual.
+
 
