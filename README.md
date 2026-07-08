@@ -148,4 +148,11 @@ Se detuvo una de las dos instancias reales del Auto Scaling Group (`i-0132685d07
 | Recuperación | Auto Scaling Group | Al detectar una instancia no saludable, la termina y lanza una nueva para restaurar la capacidad deseada (visto en la Parte 5) |
 | Distribución de carga | Load Balancer | Cuando una instancia no está funcionando, dirige toda la carga a las instancias restantes que sí están saludables |
 
+## Propuesta de mejora para producción
+
+Dos mejoras elegidas, ancladas directamente a limitaciones observadas en este laboratorio (no genéricas):
+
+1. **Auto Scaling basado en `RequestCountPerTarget` en vez de CPU.** Ataca directamente el problema observado en la Parte 3: la política de target tracking por CPU nunca se activó pese a tráfico HTTP real y sostenido, porque servir contenido estático es demasiado barato en CPU. Una métrica de peticiones por instancia reflejaría la carga real percibida por la aplicación, sin depender de que el cuello de botella sea justamente CPU.
+2. **Infraestructura como código (IaC).** Ataca la causa raíz de la limitación documentada en la Parte 1 (Launch Template sin User Data): el contenido dinámico de `index.html` quedó "congelado" porque se generó una sola vez, manualmente, en la instancia base, y se horneó tal cual en la AMI. Con un pipeline de IaC versionado (Terraform/CloudFormation, o al menos un proceso repetible de construcción de AMIs), el bootstrap de cada instancia se definiría de forma reproducible y se re-ejecutaría en cada lanzamiento real, evitando que el contenido dinámico dependa de una única ejecución manual.
+
 
