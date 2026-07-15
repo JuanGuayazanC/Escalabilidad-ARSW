@@ -22,6 +22,40 @@ Todo el trabajo se realiza sobre la consola de AWS (no hay código de aplicació
 
 Son conceptos relacionados pero distintos: se puede escalar sin ser altamente disponible (por ejemplo, muchas instancias en una sola AZ) y se puede ser altamente disponible sin escalar (dos instancias fijas en dos AZ, sin Auto Scaling).
 
+## Arquitectura implementada
+
+```mermaid
+graph TD
+    User["Internet / Navegador / curl"]
+
+    subgraph ALBSG["Security Group: alb-scalability-sg (HTTP 80 desde 0.0.0.0/0)"]
+        ALB["Application Load Balancer<br/>alb-scalability-ha<br/>AZs: us-east-1a, us-east-1b"]
+    end
+
+    TG["Target Group: tg-scalability-ha<br/>Health check: HTTP GET /health"]
+
+    subgraph ASG["Auto Scaling Group: asg-web-scalability<br/>deseada=2 min=2 max=3<br/>Politica de seguimiento de destino: CPU promedio 50%"]
+        subgraph EC2SG["Security Group: ec2-scalability-sg (HTTP 80 solo desde alb-scalability-sg)"]
+            I1["Instancia EC2<br/>us-east-1a"]
+            I2["Instancia EC2<br/>us-east-1b"]
+            I3["Instancia EC2<br/>(lanzada al escalar o reemplazar)"]
+        end
+    end
+
+    CW["CloudWatch Metrics<br/>CPUUtilization, NetworkIn/Out,<br/>RequestCount, HealthyHostCount,<br/>GroupDesiredCapacity"]
+
+    User -->|HTTP 80| ALB
+    ALB --> TG
+    TG --> I1
+    TG --> I2
+    TG -.-> I3
+    ALB -.metricas.-> CW
+    I1 -.metricas.-> CW
+    I2 -.metricas.-> CW
+```
+
+La AMI que usa el Launch Template (`lt-web-scalability`) se construye a partir de una instancia base (`web-scalability-base`) que corre una sola vez el script de arranque en [scripts/user-data.sh](scripts/user-data.sh); ver la [Parte 1](#parte-1-escalabilidad-horizontal) para entender por qué el propio Launch Template no lo vuelve a ejecutar.
+
 ## Parte 1: Escalabilidad horizontal
 
 ### Security Groups
@@ -157,38 +191,94 @@ Dos mejoras elegidas, ancladas directamente a limitaciones observadas en este la
 
 ## Reto final: informe técnico
 
-Evidencia recopilada en [evidencias/](evidencias/), organizada según los puntos pedidos en la sección 32 de la guía:
+Evidencia recopilada en [evidencias/](evidencias/), organizada según los puntos pedidos en la sección 32 de la guía.
 
 **2. Auto Scaling Group**
-- [12-auto-scaling-group-created.png](evidencias/12-auto-scaling-group-created.png) — `asg-web-scalability` recién creado, capacidad deseada 2.
-- [23-asg-group-capacity-metrics.png](evidencias/23-asg-group-capacity-metrics.png) — métricas del grupo (capacidad deseada, instancias en servicio) planas en 2 durante la prueba de carga.
+
+`asg-web-scalability` recién creado, capacidad deseada 2:
+
+![Auto Scaling Group creado](evidencias/auto-scaling-group-created.png)
+
+Métricas del grupo (capacidad deseada, instancias en servicio) planas en 2 durante la prueba de carga:
+
+![Métricas de capacidad del Auto Scaling Group](evidencias/asg-group-capacity-metrics.png)
 
 **3. Load Balancer**
-- [09-alb-creation-config.png](evidencias/09-alb-creation-config.png) y [10-alb-listener-routing-config.png](evidencias/10-alb-listener-routing-config.png) — configuración del ALB (dos AZ, SG, listener HTTP:80 → `tg-scalability-ha`).
-- [11-alb-created.png](evidencias/11-alb-created.png) — `alb-scalability-ha` creado.
+
+Configuración del ALB (dos AZ, SG, listener HTTP:80 → `tg-scalability-ha`):
+
+![Configuración de creación del ALB](evidencias/alb-creation-config.png)
+![Configuración del listener y enrutamiento del ALB](evidencias/alb-listener-routing-config.png)
+
+`alb-scalability-ha` creado:
+
+![ALB creado](evidencias/alb-created.png)
 
 **4. Target Group con targets Healthy**
-- [14-target-group-healthy.png](evidencias/14-target-group-healthy.png) — las dos instancias del ASG registradas y `Healthy`.
+
+Las dos instancias del ASG registradas y `Healthy`:
+
+![Target Group saludable](evidencias/target-group-healthy.png)
 
 **5. Evidencia de respuesta desde varias instancias**
-- [13-instances-running-healthy.png](evidencias/13-instances-running-healthy.png) — las 3 instancias (base + 2 del ASG) corriendo y con checks pasados.
-- [15-alb-response-instance-id.png](evidencias/15-alb-response-instance-id.png) y [16-curl-loop-load-balancer-test.png](evidencias/16-curl-loop-load-balancer-test.png) — respuesta del ALB (limitada por el contenido estático documentado en la Parte 1: siempre muestra el Instance ID de la instancia base, aunque el balanceo real ocurre entre las dos instancias del ASG).
+
+Las 3 instancias (base + 2 del ASG) corriendo y con checks pasados:
+
+![Instancias corriendo y saludables](evidencias/instances-running-healthy.png)
+
+Respuesta del ALB (limitada por el contenido estático documentado en la Parte 1: siempre muestra el Instance ID de la instancia base, aunque el balanceo real ocurre entre las dos instancias del ASG):
+
+![Respuesta del ALB mostrando el instance id](evidencias/alb-response-instance-id.png)
+![Bucle de curl contra el load balancer](evidencias/curl-loop-load-balancer-test.png)
 
 **6. Evidencia de escalamiento o intento de escalamiento**
-- [17-asg-activity-no-scaling-during-load-test.png](evidencias/17-asg-activity-no-scaling-during-load-test.png) — historial de actividad del ASG mostrando que no hubo eventos de escalamiento durante la prueba de carga.
-- [19-cpu-network-metrics-load-test-1.png](evidencias/19-cpu-network-metrics-load-test-1.png) y [20-cpu-utilization-sustained-load.png](evidencias/20-cpu-utilization-sustained-load.png) — CPU plana pese al tráfico real, según lo documentado en la Parte 3.
+
+Historial de actividad del ASG mostrando que no hubo eventos de escalamiento durante la prueba de carga:
+
+![Actividad del ASG sin escalamiento durante la prueba de carga](evidencias/asg-activity-no-scaling-during-load-test.png)
+
+CPU plana pese al tráfico real, según lo documentado en la Parte 3:
+
+![Métricas de CPU y red durante la primera prueba de carga](evidencias/cpu-network-metrics-load-test.png)
+![Utilización de CPU durante la carga sostenida](evidencias/cpu-utilization-sustained-load.png)
 
 **7. Evidencia de métricas en CloudWatch**
-- [18-asg-group-metrics-not-enabled.png](evidencias/18-asg-group-metrics-not-enabled.png) — hallazgo de que la recolección de métricas de grupo estaba deshabilitada por defecto.
-- [21-cloudwatch-metrics-filtered-scalability.png](evidencias/21-cloudwatch-metrics-filtered-scalability.png) — métricas del ALB/Target Group correctamente filtradas por recurso.
-- [22-ec2-cpu-network-metrics-full-test.png](evidencias/22-ec2-cpu-network-metrics-full-test.png) — CPU y red de las instancias durante la prueba sostenida.
+
+Hallazgo de que la recolección de métricas de grupo estaba deshabilitada por defecto:
+
+![Métricas de grupo del ASG deshabilitadas](evidencias/asg-group-metrics-not-enabled.png)
+
+Métricas del ALB/Target Group correctamente filtradas por recurso:
+
+![Métricas de CloudWatch filtradas por los recursos de escalabilidad](evidencias/cloudwatch-metrics-filtered-scalability.png)
+
+CPU y red de las instancias durante la prueba sostenida:
+
+![Métricas de CPU y red de EC2 durante la prueba completa](evidencias/ec2-cpu-network-metrics-full-test.png)
 
 **8. Evidencia de falla simulada y recuperación**
-- [24-target-group-draining-and-replacement.png](evidencias/24-target-group-draining-and-replacement.png) — instancia detenida en estado `Draining` y su reemplazo `Healthy`.
-- [25-asg-activity-replace-instance.png](evidencias/25-asg-activity-replace-instance.png) — historial de actividad mostrando la terminación y el reemplazo.
-- [26-alb-response-after-failure-continuity.png](evidencias/26-alb-response-after-failure-continuity.png) — el ALB sigue respondiendo con éxito durante la recuperación.
+
+Instancia detenida en estado `Draining` y su reemplazo `Healthy`:
+
+![Target group en estado draining y su reemplazo](evidencias/target-group-draining-and-replacement.png)
+
+Historial de actividad mostrando la terminación y el reemplazo:
+
+![Actividad del ASG reemplazando la instancia fallida](evidencias/asg-activity-replace-instance.png)
+
+El ALB sigue respondiendo con éxito durante la recuperación:
+
+![Respuesta del ALB tras la falla, mostrando continuidad del servicio](evidencias/alb-response-after-failure-continuity.png)
 
 **Configuración base (Security Groups, instancia, AMI, Launch Template)**
-- [01-vpc-subnets-multi-az.png](evidencias/01-vpc-subnets-multi-az.png), [02-security-groups-created.png](evidencias/02-security-groups-created.png), [03-ec2-sg-inbound-rule-from-alb-sg.png](evidencias/03-ec2-sg-inbound-rule-from-alb-sg.png), [04-base-instance-running.png](evidencias/04-base-instance-running.png), [05-health-endpoint-response.png](evidencias/05-health-endpoint-response.png), [06-ami-creation-form.png](evidencias/06-ami-creation-form.png), [07-ami-available.png](evidencias/07-ami-available.png), [08-launch-template-created.png](evidencias/08-launch-template-created.png).
 
-Los puntos 1 (diagrama de arquitectura), 9-11 (análisis de escalabilidad/alta disponibilidad/observabilidad) y 12 (propuesta de mejora) ya están cubiertos por las secciones de teoría, las Actividades 1-4, la tabla de relación de conceptos, y la propuesta de mejora de este mismo README.
+![Subredes de la VPC en múltiples zonas de disponibilidad](evidencias/vpc-subnets-multi-az.png)
+![Security groups creados](evidencias/security-groups-created.png)
+![Regla de entrada del security group de EC2 desde el del ALB](evidencias/ec2-sg-inbound-rule-from-alb-sg.png)
+![Instancia base corriendo](evidencias/base-instance-running.png)
+![Respuesta del endpoint de health](evidencias/health-endpoint-response.png)
+![Formulario de creación de la AMI](evidencias/ami-creation-form.png)
+![AMI disponible](evidencias/ami-available.png)
+![Launch template creado](evidencias/launch-template-created.png)
+
+El punto 1 (diagrama de arquitectura) está cubierto por la sección [Arquitectura implementada](#arquitectura-implementada) más arriba. Los puntos 9-11 (análisis de escalabilidad/alta disponibilidad/observabilidad) y 12 (propuesta de mejora) están cubiertos por las secciones de teoría, las Actividades 1-4, la tabla de relación de conceptos, y la propuesta de mejora de este mismo README.
