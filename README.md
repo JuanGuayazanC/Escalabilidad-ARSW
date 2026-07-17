@@ -17,6 +17,18 @@ Systems Engineering
 Colombian School of Engineering Julio Garavito  
 2026-i
 
+## Repository structure
+
+```
+/README.md          Theory, execution log, and answers to the guide's activities and final report
+/scripts/user-data.sh  Bootstrap script (User Data) that installs Apache and generates the static pages on the base EC2 instance
+/evidencias/         Lab screenshots referenced throughout this document (Final Challenge evidence)
+```
+
+## How to Run
+
+This lab is built manually through the AWS Console; there is no application to run beyond the bootstrap script in [scripts/user-data.sh](scripts/user-data.sh), which is executed once on the base EC2 instance before it's baked into the AMI. Follow the numbered Parts below (Part 1 through Part 5) to reproduce the architecture step by step, starting with the Security Groups and base instance described in [Initial setup](#initial-setup).
+
 ## Initial setup
 
 - **Fixed region:** `us-east-1` (N. Virginia), used throughout the entire lab.
