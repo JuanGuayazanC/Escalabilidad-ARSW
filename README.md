@@ -17,6 +17,18 @@ Ingeniería de Sistemas
 Escuela Colombiana de Ingeniería Julio Garavito  
 2026-i
 
+## Estructura del repositorio
+
+```
+/README.md          Teoría, bitácora de ejecución y respuestas a las actividades y al reto final de la guía
+/scripts/user-data.sh  Script de arranque (User Data) que instala Apache y genera las páginas estáticas en la instancia base EC2
+/evidencias/         Capturas de pantalla del laboratorio referenciadas en este documento (evidencia del Reto Final)
+```
+
+## Cómo ejecutar
+
+Este laboratorio se construye manualmente a través de la consola de AWS; no hay ninguna aplicación que ejecutar más allá del script de arranque en [scripts/user-data.sh](scripts/user-data.sh), que se ejecuta una sola vez en la instancia base EC2 antes de empaquetarla en la AMI. Sigue las Partes numeradas a continuación (Parte 1 a Parte 5) para reproducir la arquitectura paso a paso, comenzando por los Security Groups y la instancia base descritos en [Preparación inicial](#preparación-inicial).
+
 ## Preparación inicial
 
 - **Región fija:** `us-east-1` (N. Virginia), usada durante todo el laboratorio.
