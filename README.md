@@ -8,6 +8,15 @@ Lab for the **Software Architecture** course. It builds an architecture on AWS A
 
 All the work is done through the AWS console (there is no application code of our own beyond a bootstrap script). This document collects the theory, the decisions made while building the architecture, the answers to the guide's analysis activities, and the final report.
 
+## Author
+
+JUAN SEBASTIÁN GUAYAZÁN CLAVIJO  
+Software Architectures (ISIS ARSW - 101)  
+Dean's Office of Systems Engineering  
+Systems Engineering  
+Colombian School of Engineering Julio Garavito  
+2026-i
+
 ## Initial setup
 
 - **Fixed region:** `us-east-1` (N. Virginia), used throughout the entire lab.
