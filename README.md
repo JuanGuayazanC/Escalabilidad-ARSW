@@ -8,6 +8,15 @@ Laboratorio de la asignatura **Arquitecturas de Software**. Se construye una arq
 
 Todo el trabajo se realiza sobre la consola de AWS (no hay código de aplicación propio más allá de un script de arranque). Este documento recoge la teoría, las decisiones tomadas durante la construcción, las respuestas a las actividades de análisis de la guía y el informe final.
 
+## Autor
+
+JUAN SEBASTIÁN GUAYAZÁN CLAVIJO  
+Arquitecturas de Software (ISIS ARSW - 101)  
+Decanatura de Ingeniería de Sistemas  
+Ingeniería de Sistemas  
+Escuela Colombiana de Ingeniería Julio Garavito  
+2026-i
+
 ## Preparación inicial
 
 - **Región fija:** `us-east-1` (N. Virginia), usada durante todo el laboratorio.
