@@ -27,6 +27,15 @@ Escuela Colombiana de Ingeniería Julio Garavito
 
 ## Cómo ejecutar
 
+Primero clona el repositorio — el script de arranque referenciado abajo vive en
+`scripts/`, y esta rama tiene el informe completo del laboratorio:
+
+```bash
+git clone https://github.com/JuanGuayazanC/Escalabilidad-ARSW.git
+cd Escalabilidad-ARSW
+git checkout develop-es
+```
+
 Este laboratorio se construye manualmente a través de la consola de AWS; no hay ninguna aplicación que ejecutar más allá del script de arranque en [scripts/user-data.sh](scripts/user-data.sh), que se ejecuta una sola vez en la instancia base EC2 antes de empaquetarla en la AMI. Sigue las Partes numeradas a continuación (Parte 1 a Parte 5) para reproducir la arquitectura paso a paso, comenzando por los Security Groups y la instancia base descritos en [Preparación inicial](#preparación-inicial).
 
 ## Preparación inicial
