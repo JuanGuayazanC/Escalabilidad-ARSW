@@ -27,6 +27,15 @@ Colombian School of Engineering Julio Garavito
 
 ## How to Run
 
+Clone the repository first — the bootstrap script referenced below lives in
+`scripts/`, and this branch has the full lab report:
+
+```bash
+git clone https://github.com/JuanGuayazanC/Escalabilidad-ARSW.git
+cd Escalabilidad-ARSW
+git checkout develop
+```
+
 This lab is built manually through the AWS Console; there is no application to run beyond the bootstrap script in [scripts/user-data.sh](scripts/user-data.sh), which is executed once on the base EC2 instance before it's baked into the AMI. Follow the numbered Parts below (Part 1 through Part 5) to reproduce the architecture step by step, starting with the Security Groups and base instance described in [Initial setup](#initial-setup).
 
 ## Initial setup
