@@ -86,6 +86,10 @@ graph TD
 
 The AMI used by the Launch Template (`lt-web-scalability`) is built from a base instance (`web-scalability-base`) that runs the bootstrap script in [scripts/user-data.sh](scripts/user-data.sh) once; see [Part 1](#part-1-horizontal-scalability) for why the Launch Template itself doesn't re-run it.
 
+Same architecture using official AWS iconography (built in Lucidchart); the legend at the bottom maps each icon to the real resource name, since AWS's official shapes don't allow overriding their default label:
+
+![Implemented architecture diagram using official AWS icons](evidencias/architecture-diagram.png)
+
 ## Part 1: Horizontal scalability
 
 ### Security Groups
