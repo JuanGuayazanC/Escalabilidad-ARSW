@@ -86,6 +86,10 @@ graph TD
 
 La AMI que usa el Launch Template (`lt-web-scalability`) se construye a partir de una instancia base (`web-scalability-base`) que corre una sola vez el script de arranque en [scripts/user-data.sh](scripts/user-data.sh); ver la [Parte 1](#parte-1-escalabilidad-horizontal) para entender por qué el propio Launch Template no lo vuelve a ejecutar.
 
+La misma arquitectura usando la iconografía oficial de AWS (construida en Lucidchart); la leyenda al final asocia cada ícono con el nombre real del recurso, ya que los íconos oficiales de AWS no permiten sobreescribir su etiqueta por defecto:
+
+![Diagrama de arquitectura implementada con íconos oficiales de AWS](evidencias/architecture-diagram.png)
+
 ## Parte 1: Escalabilidad horizontal
 
 ### Security Groups
